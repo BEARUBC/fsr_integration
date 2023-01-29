@@ -94,23 +94,25 @@ impl FSR_INTEGRATION {
         
     }
 
-    pub fn setPinHigh(&mut self, pinNo: u16) -> Result<(), StdError> {
-        let pin = self.outputPinMap.get(&pinNo).unwrap();
+
+    pub fn digitalWrite(&mut self, pinNo: u16, value: u16) -> Result<(), StdError> {
+        let pin = self.outputPinMap.get_mut(&pinNo);
+        let p = &mut (*pin.unwrap());
+        if value == 0 {
+            p.set_low();
+        } else if value == 1 {
+            p.set_high();
+        }
         
         Ok(())
     }
 
-    pub fn setPinLow(&self, pinNo: u16) -> Result<(), StdError> {
-        self.outputPinMap.get(&pinNo).unwrap().set_low();
-        Ok(())
-    }
 
-
-
-    pub fn setRow(&self, rowNumber: u16) -> Result<(), StdError> {
+    pub fn setRow(&mut self, rowNumber: u16) -> Result<(), StdError> {
     
         if rowNumber % ROWS_PER_MUX == 0 {
-            //self.setPinHigh(PIN_MUX_INHIBIT_0 + self.currentEnabledMux);
+            
+            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 1)?;
 
             self.currentEnabledMux += 1;
             
@@ -118,10 +120,7 @@ impl FSR_INTEGRATION {
                 self.currentEnabledMux = 0;
             }
 
-            match self.outputPinMap.get(&(PIN_MUX_INHIBIT_0 + self.currentEnabledMux)) {
-                Some(&pin) => pin.set_low()?,
-                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-            }
+            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 0)?;
         }
 
 
@@ -129,15 +128,9 @@ impl FSR_INTEGRATION {
             let bit = FSR_INTEGRATION::bitRead(rowNumber, i).unwrap();
 
             if bit == 1 {
-                match self.outputPinMap.get(&(PIN_MUX_CHANNEL_0 + i)) {
-                    Some(&pin) => pin.set_high()?,
-                    _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-                }
+                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 1)?;
             } else {
-                match self.outputPinMap.get(&(PIN_MUX_CHANNEL_0 + i)) {
-                    Some(&pin) => pin.set_low()?,
-                    _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-                }
+                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 0)?;
             }
         }
 
@@ -146,31 +139,46 @@ impl FSR_INTEGRATION {
 
 
 
-    pub fn shiftColumn(&self, isFirst: bool) -> Result<(), StdError> {
+    pub fn shiftColumn(&mut self, isFirst: bool) -> Result<(), StdError> {
         if isFirst {
-            match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_DATA)) {
-                Some(&pin) => pin.set_high()?,
-                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-            }
+            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 1)?;
         }
 
-        match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_CLOCK)) {
-            Some(&pin) => pin.set_high()?,
-            _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-        }
-
-        match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_CLOCK)) {
-            Some(&pin) => pin.set_low()?,
-            _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-        }
+        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 1)?;
+        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 0)?;
 
         if isFirst {
-            match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_DATA)) {
-                Some(&pin) => pin.set_low()?,
-                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-            }
+            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 0)?;
         }
 
+        Ok(())
+    }
+
+    pub fn readADCValue(&mut self) -> Result<u16, StdError> {
+        match self.adcInputGpio.read_value() {
+            Ok(val) => match val {
+                gpio::GpioValue::Low => return Ok(0),
+                gpio::GpioValue::High => return Ok(1)
+            },
+            _ => Err(StdError::new(ErrorKind::Other, "Failed to Read ADC"))
+        }
+    }
+
+
+    pub fn run(&mut self) -> Result<(), StdError> {
+        for i in 0..ROW_COUNT {
+            self.setRow(i)?;
+            self.shiftColumn(true)?;
+            self.shiftColumn(false)?;
+
+            for j in 0..COLUMN_COUNT {
+                let reading = self.readADCValue()?;
+                self.shiftColumn(false)?;
+                print!("{} ", reading);
+            }
+            println!();
+        }
+        println!();
         Ok(())
     }
 
