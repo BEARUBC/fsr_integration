@@ -1,6 +1,7 @@
 use std::io::Error as StdError;
 use std::io::{ErrorKind};
 use std::collections::{HashMap};
+use std::pin;
 use std::vec::Vec;
 use gpio::{GpioIn, GpioOut, sysfs::{SysFsGpioInput, SysFsGpioOutput}};
 
@@ -29,92 +30,149 @@ const PIN_MUX_INHIBIT_1: u16 = 8;
 
 pub struct FSR_INTEGRATION {
     adcInputGpio: SysFsGpioInput,
-    outpuPinMap: HashMap<u16, SysFsGpioOutput>,
+    outputPinMap: HashMap<u16, Box<SysFsGpioOutput>>,
     currentEnabledMux: u16
 }
 
 
 impl FSR_INTEGRATION {
-    pub fn new() -> Result<FSR_INTEGRATION, StdError> {
-        
-        Ok(FSR_INTEGRATION{})
+    pub fn new() -> Result<Self, StdError> {
+        Ok(FSR_INTEGRATION{
+            adcInputGpio: SysFsGpioInput::open(PIN_ADC_INPUT)?,
+            outputPinMap: FSR_INTEGRATION::setupPins()?,
+            currentEnabledMux: MUX_COUNT - 1
+        })
     }
 
     
-    pub fn setup(&self) -> Result<(), StdError> {
-        self.outpuPinMap = HashMap::new();
+    pub fn setupPins() -> Result<HashMap<u16, Box<SysFsGpioOutput>>, StdError> {
+        let mut outputPinMap = HashMap::new();
 
-        self.adcInputGpio = SysFsGpioInput::open(PIN_ADC_INPUT)?;
-
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_SHIFT_REGISTER_DATA,
-            SysFsGpioOutput::open(PIN_SHIFT_REGISTER_DATA)?
+            Box::new(SysFsGpioOutput::open(PIN_SHIFT_REGISTER_DATA)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_SHIFT_REGISTER_CLOCK,
-            SysFsGpioOutput::open(PIN_SHIFT_REGISTER_CLOCK)?
+            Box::new(SysFsGpioOutput::open(PIN_SHIFT_REGISTER_CLOCK)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_MUX_CHANNEL_0,
-            SysFsGpioOutput::open(PIN_MUX_CHANNEL_0)?
+            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_0)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_MUX_CHANNEL_1,
-            SysFsGpioOutput::open(PIN_MUX_CHANNEL_1)?
+            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_1)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_MUX_CHANNEL_2,
-            SysFsGpioOutput::open(PIN_MUX_CHANNEL_2)?
+            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_2)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_MUX_INHIBIT_0,
-            SysFsGpioOutput::open(PIN_MUX_INHIBIT_0)?
+            Box::new(SysFsGpioOutput::open(PIN_MUX_INHIBIT_0)?)
         );
 
-        self.outpuPinMap.insert(
+        outputPinMap.insert(
             PIN_MUX_INHIBIT_1,
-            SysFsGpioOutput::open(PIN_MUX_INHIBIT_1)?
+            Box::new(SysFsGpioOutput::open(PIN_MUX_INHIBIT_1)?)
         );
 
+        return Ok(outputPinMap);
+    }
+
+
+    pub fn bitRead(x: u16, i: u16) -> Result<u16, std::io::Error> {
+        let s = format!("{x:b}");
+        
+        return Ok(s.chars().nth(s.len() - (i + 1) as usize).unwrap() as u16 - '0' as  u16);
+        
+    }
+
+    pub fn setPinHigh(&mut self, pinNo: u16) -> Result<(), StdError> {
+        let pin = self.outputPinMap.get(&pinNo).unwrap();
+        
         Ok(())
     }
 
-    pub fn readData() -> Result<Vec<Vec<u16>>, StdError> {
-
+    pub fn setPinLow(&self, pinNo: u16) -> Result<(), StdError> {
+        self.outputPinMap.get(&pinNo).unwrap().set_low();
         Ok(())
     }
+
 
 
     pub fn setRow(&self, rowNumber: u16) -> Result<(), StdError> {
-
+    
         if rowNumber % ROWS_PER_MUX == 0 {
-            match self.outpuPinMap.get(&(PIN_MUX_CHANNEL_0 + self.currentEnabledMux)) {
-                Some(&pin) => pin.set_high()?,
-                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
-            }
+            //self.setPinHigh(PIN_MUX_INHIBIT_0 + self.currentEnabledMux);
+
             self.currentEnabledMux += 1;
             
             if self.currentEnabledMux >= MUX_COUNT {
                 self.currentEnabledMux = 0;
             }
 
-            match self.outpuPinMap.get(&(PIN_MUX_CHANNEL_0 + self.currentEnabledMux)) {
+            match self.outputPinMap.get(&(PIN_MUX_INHIBIT_0 + self.currentEnabledMux)) {
                 Some(&pin) => pin.set_low()?,
                 _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
             }
         }
 
 
+        for i in 0..CHANNEL_PINS_PER_MUX {
+            let bit = FSR_INTEGRATION::bitRead(rowNumber, i).unwrap();
 
-
+            if bit == 1 {
+                match self.outputPinMap.get(&(PIN_MUX_CHANNEL_0 + i)) {
+                    Some(&pin) => pin.set_high()?,
+                    _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+                }
+            } else {
+                match self.outputPinMap.get(&(PIN_MUX_CHANNEL_0 + i)) {
+                    Some(&pin) => pin.set_low()?,
+                    _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+                }
+            }
+        }
 
         Ok(())
     }
 
 
+
+    pub fn shiftColumn(&self, isFirst: bool) -> Result<(), StdError> {
+        if isFirst {
+            match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_DATA)) {
+                Some(&pin) => pin.set_high()?,
+                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+            }
+        }
+
+        match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_CLOCK)) {
+            Some(&pin) => pin.set_high()?,
+            _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+        }
+
+        match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_CLOCK)) {
+            Some(&pin) => pin.set_low()?,
+            _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+        }
+
+        if isFirst {
+            match self.outputPinMap.get(&(PIN_SHIFT_REGISTER_DATA)) {
+                Some(&pin) => pin.set_low()?,
+                _ => return Err(StdError::new(ErrorKind::Other, "Failed")),
+            }
+        }
+
+        Ok(())
+    }
+
+    
 }
