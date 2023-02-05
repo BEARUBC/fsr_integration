@@ -4,7 +4,8 @@ use std::collections::{HashMap};
 use std::pin;
 use std::vec::Vec;
 use gpio::{GpioIn, GpioOut, sysfs::{SysFsGpioInput, SysFsGpioOutput}};
-
+extern crate mcp3008;
+use mcp3008::Mcp3008;
 
 
 const BAUD_RATE: u64 = 115200;
@@ -18,20 +19,21 @@ const CHANNEL_PINS_PER_MUX: u16 = 3;
 //TODO 
 //Assign Pins
 const PIN_ADC_INPUT: u16 = 1;
-const PIN_SHIFT_REGISTER_CLOCK: u16 = 3;
-const PIN_SHIFT_REGISTER_DATA: u16 = 2;
-const PIN_MUX_CHANNEL_0: u16 = 2;
-const PIN_MUX_CHANNEL_1: u16 = 5;
-const PIN_MUX_CHANNEL_2: u16 = 6;
-const PIN_MUX_INHIBIT_0: u16 = 3;
-const PIN_MUX_INHIBIT_1: u16 = 8;
+const PIN_SHIFT_REGISTER_CLOCK: u16 = 5;
+const PIN_SHIFT_REGISTER_DATA: u16 = 6;
+const PIN_MUX_CHANNEL_0: u16 = 22;
+const PIN_MUX_CHANNEL_1: u16 = 27;
+const PIN_MUX_CHANNEL_2: u16 = 17;
+const PIN_MUX_INHIBIT_0: u16 = 24;
+const PIN_MUX_INHIBIT_1: u16 = 23;
 
 
 
 pub struct FSR_INTEGRATION {
     adcInputGpio: SysFsGpioInput,
     outputPinMap: HashMap<u16, Box<SysFsGpioOutput>>,
-    currentEnabledMux: u16
+    currentEnabledMux: u16,
+    mcp3008: Mcp3008
 }
 
 
@@ -40,7 +42,8 @@ impl FSR_INTEGRATION {
         Ok(FSR_INTEGRATION{
             adcInputGpio: SysFsGpioInput::open(PIN_ADC_INPUT)?,
             outputPinMap: FSR_INTEGRATION::setupPins()?,
-            currentEnabledMux: MUX_COUNT - 1
+            currentEnabledMux: MUX_COUNT - 1,
+            mcp3008: Mcp3008::new("/dev/spidev0.0")?
         })
     }
 
@@ -155,13 +158,14 @@ impl FSR_INTEGRATION {
     }
 
     pub fn readADCValue(&mut self) -> Result<u16, StdError> {
-        match self.adcInputGpio.read_value() {
-            Ok(val) => match val {
-                gpio::GpioValue::Low => return Ok(0),
-                gpio::GpioValue::High => return Ok(1)
-            },
-            _ => Err(StdError::new(ErrorKind::Other, "Failed to Read ADC"))
-        }
+        // match self.adcInputGpio.read_value() {
+        //     Ok(val) => match val {
+        //         gpio::GpioValue::Low => return Ok(0),
+        //         gpio::GpioValue::High => return Ok(1)
+        //     },
+        //     _ => Err(StdError::new(ErrorKind::Other, "Failed to Read ADC"))
+        // }
+        self.mcp3008.read_adc(0).unwrap() as u16
     }
 
 

@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 gpio = "0.4.1"
+mcp3008 = "1.0.0"
