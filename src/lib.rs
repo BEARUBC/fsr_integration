@@ -43,7 +43,7 @@ impl FSR_INTEGRATION {
             adcInputGpio: SysFsGpioInput::open(PIN_ADC_INPUT)?,
             outputPinMap: FSR_INTEGRATION::setupPins()?,
             currentEnabledMux: MUX_COUNT - 1,
-            mcp3008: Mcp3008::new("/dev/spidev0.0")?
+            mcp3008: Mcp3008::new("/dev/spidev0.0").unwrap()
         })
     }
 
@@ -165,7 +165,7 @@ impl FSR_INTEGRATION {
         //     },
         //     _ => Err(StdError::new(ErrorKind::Other, "Failed to Read ADC"))
         // }
-        self.mcp3008.read_adc(0).unwrap() as u16
+        Ok(self.mcp3008.read_adc(0).unwrap() as u16)
     }
 
 
