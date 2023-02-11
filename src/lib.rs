@@ -10,100 +10,109 @@ use mcp3008::Mcp3008;
 
 
 const BAUD_RATE: u64 = 115200;
-const ROW_COUNT: u16 = 10;
-const COLUMN_COUNT: u16 = 16;
+const ROW_COUNT: u8 = 10;
+const COLUMN_COUNT: u8 = 16;
 
-const ROWS_PER_MUX: u16 = 8;
-const MUX_COUNT: u16 = 2;
-const CHANNEL_PINS_PER_MUX: u16 = 3;
+const ROWS_PER_MUX: u8 = 8;
+const MUX_COUNT: u8 = 2;
+const CHANNEL_PINS_PER_MUX: u8 = 3;
 
 //TODO 
 //Assign Pins
-const PIN_ADC_INPUT: u16 = 1;
-const PIN_SHIFT_REGISTER_CLOCK: u16 = 5;
-const PIN_SHIFT_REGISTER_DATA: u16 = 6;
-const PIN_MUX_CHANNEL_0: u16 = 22;
-const PIN_MUX_CHANNEL_1: u16 = 27;
-const PIN_MUX_CHANNEL_2: u16 = 17;
-const PIN_MUX_INHIBIT_0: u16 = 24;
-const PIN_MUX_INHIBIT_1: u16 = 23;
+const PIN_ADC_INPUT: u8 = 1;
+const PIN_SHIFT_REGISTER_CLOCK: u8 = 5;
+const PIN_SHIFT_REGISTER_DATA: u8 = 6;
+const PIN_MUX_CHANNEL_0: u8 = 22;
+const PIN_MUX_CHANNEL_1: u8 = 27;
+const PIN_MUX_CHANNEL_2: u8 = 17;
+const PIN_MUX_INHIBIT_0: u8 = 23;
+const PIN_MUX_INHIBIT_1: u8 = 24;
 
 
 
 pub struct FSR_INTEGRATION {
     adcInputGpio: InputPin,
-    outputPinMap: HashMap<u16, Box<OutputPin>>,
-    currentEnabledMux: u16,
+    outputPinMap: HashMap<u8, Box<OutputPin>>,
+    currentEnabledMux: u8,
     mcp3008: Mcp3008
 }
 
 
 impl FSR_INTEGRATION {
     pub fn new() -> Result<Self, StdError> {
-        let gpio = Gpio::new()?;
+        let gpio = Gpio::new().unwrap();
 
         Ok(FSR_INTEGRATION{
-            adcInputGpio: gpio.get(PIN_ADC_INPUT)?.into_input(),
-            outputPinMap: FSR_INTEGRATION::setupPins()?,
+            adcInputGpio: gpio.get(PIN_ADC_INPUT).unwrap().into_input(),
+            outputPinMap: FSR_INTEGRATION::setupPins().unwrap(),
             currentEnabledMux: MUX_COUNT - 1,
             mcp3008: Mcp3008::new("/dev/spidev0.0").unwrap()
         })
     }
 
     
-    pub fn setupPins() -> Result<HashMap<u16, Box<SysFsGpioOutput>>, StdError> {
+    pub fn setupPins() -> Result<HashMap<u8, Box<OutputPin>>, StdError> {
         let mut outputPinMap = HashMap::new();
-        let gpio = Gpio::new()?;
+        let gpio = Gpio::new().unwrap();
 
         outputPinMap.insert(
             PIN_SHIFT_REGISTER_DATA,
-            Box::new(gpio.get(PIN_SHIFT_REGISTER_DATA)?.into_output())
+            Box::new(gpio.get(PIN_SHIFT_REGISTER_DATA).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_SHIFT_REGISTER_CLOCK,
-            Box::new(gpio.get(PIN_SHIFT_REGISTER_CLOCK)?.into_output())
+            Box::new(gpio.get(PIN_SHIFT_REGISTER_CLOCK).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_CHANNEL_0,
-            Box::new(gpio.get(PIN_MUX_CHANNEL_0)?.into_output())
+            Box::new(gpio.get(PIN_MUX_CHANNEL_0).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_CHANNEL_1,
-            Box::new(gpio.get(PIN_MUX_CHANNEL_1)?.into_output())
+            Box::new(gpio.get(PIN_MUX_CHANNEL_1).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_CHANNEL_2,
-            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_2)?)
+            Box::new(gpio.get(PIN_MUX_CHANNEL_2).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_INHIBIT_0,
-            Box::new(gpio.get(PIN_MUX_INHIBIT_0)?.into_output())
+            Box::new(gpio.get(PIN_MUX_INHIBIT_0).unwrap().into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_INHIBIT_1,
-            Box::new(gpio.get(PIN_MUX_INHIBIT_1)?.into_output())
+            Box::new(gpio.get(PIN_MUX_INHIBIT_1).unwrap().into_output())
         );
+
+
+        // for (key, value) in outputPinMap {
+        //     println!("{} / {:?}", key, value);
+        // }
 
         return Ok(outputPinMap);
     }
 
 
-    pub fn bitRead(x: u16, i: u16) -> Result<u16, std::io::Error> {
+    pub fn bitRead(x: u8, i: u8) -> Result<u8, std::io::Error> {
         let s = format!("{x:b}");
-        
-        return Ok(s.chars().nth(s.len() - (i + 1) as usize).unwrap() as u16 - '0' as  u16);
+        //println!("{} - {} - i = {}", x, s, i);
+        if usize::from(i) >= s.len(){
+            return Ok(0);
+        }
+        return Ok(s.chars().nth(s.len() - (i + 1) as usize).unwrap() as u8 - '0' as  u8);
         
     }
 
 
-    pub fn digitalWrite(&mut self, pinNo: u16, value: u16) -> Result<(), StdError> {
+    pub fn digitalWrite(&mut self, pinNo: u8, value: u8) -> Result<(), StdError> {
         let pin = self.outputPinMap.get_mut(&pinNo);
+        //println!("{}", pinNo);
         let p = &mut (*pin.unwrap());
         if value == 0 {
             p.set_low();
@@ -115,11 +124,11 @@ impl FSR_INTEGRATION {
     }
 
 
-    pub fn setRow(&mut self, rowNumber: u16) -> Result<(), StdError> {
+    pub fn setRow(&mut self, rowNumber: u8) -> Result<(), StdError> {
     
         if rowNumber % ROWS_PER_MUX == 0 {
             
-            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 1)?;
+            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 1).unwrap();
 
             self.currentEnabledMux += 1;
             
@@ -127,7 +136,7 @@ impl FSR_INTEGRATION {
                 self.currentEnabledMux = 0;
             }
 
-            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 0)?;
+            self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 0).unwrap();
         }
 
 
@@ -135,9 +144,9 @@ impl FSR_INTEGRATION {
             let bit = FSR_INTEGRATION::bitRead(rowNumber, i).unwrap();
 
             if bit == 1 {
-                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 1)?;
+                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 1).unwrap();
             } else {
-                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 0)?;
+                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 0).unwrap();
             }
         }
 
@@ -148,20 +157,20 @@ impl FSR_INTEGRATION {
 
     pub fn shiftColumn(&mut self, isFirst: bool) -> Result<(), StdError> {
         if isFirst {
-            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 1)?;
+            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 1).unwrap();
         }
 
-        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 1)?;
-        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 0)?;
+        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 1).unwrap();
+        self.digitalWrite(PIN_SHIFT_REGISTER_CLOCK, 0).unwrap();
 
         if isFirst {
-            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 0)?;
+            self.digitalWrite(PIN_SHIFT_REGISTER_DATA, 0).unwrap();
         }
 
         Ok(())
     }
 
-    pub fn readADCValue(&mut self) -> Result<u16, StdError> {
+    pub fn readADCValue(&mut self) -> Result<u8, StdError> {
         // match self.adcInputGpio.read_value() {
         //     Ok(val) => match val {
         //         gpio::GpioValue::Low => return Ok(0),
@@ -169,24 +178,38 @@ impl FSR_INTEGRATION {
         //     },
         //     _ => Err(StdError::new(ErrorKind::Other, "Failed to Read ADC"))
         // }
-        Ok(self.mcp3008.read_adc(0).unwrap() as u16)
+        Ok(self.mcp3008.read_adc(0).unwrap() as u8)
     }
 
 
     pub fn run(&mut self) -> Result<(), StdError> {
+        print!("[");
         for i in 0..ROW_COUNT {
-            self.setRow(i)?;
-            self.shiftColumn(true)?;
-            self.shiftColumn(false)?;
+            print!("[");
+            self.setRow(i).unwrap();
+            self.shiftColumn(true).unwrap();
+            self.shiftColumn(false).unwrap();
 
             for j in 0..COLUMN_COUNT {
-                let reading = self.readADCValue()?;
-                self.shiftColumn(false)?;
-                print!("{} ", reading);
+                let reading = self.readADCValue().unwrap();
+                self.shiftColumn(false).unwrap();
+                if j == COLUMN_COUNT-1 {
+                    print!("{}", reading);
+                } else {
+                    print!("{}, ", reading);
+                }
             }
-            println!();
+            if i == ROW_COUNT-1 {
+                print!("]");
+            } else {
+                print!("],");
+                println!();
+            }
+            
+            
         }
-        println!();
+        print!("]");
+        println!("\n\n");
         Ok(())
     }
 
