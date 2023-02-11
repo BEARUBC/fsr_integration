@@ -26,6 +26,7 @@ version = "0.1.0"
 dependencies = [
  "gpio",
  "mcp3008",
+ "rppal",
 ]
 
 [[package]]
@@ -61,6 +62,15 @@ dependencies = [
  "rustc_version",
  "semver",
  "void",
+]
+
+[[package]]
+name = "rppal"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "612e1a22e21f08a246657c6433fe52b773ae43d07c9ef88ccfc433cc8683caba"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

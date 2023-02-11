@@ -3,9 +3,10 @@ use std::io::{ErrorKind};
 use std::collections::{HashMap};
 use std::pin;
 use std::vec::Vec;
-use gpio::{GpioIn, GpioOut, sysfs::{SysFsGpioInput, SysFsGpioOutput}};
+use rppal::gpio::{Gpio, InputPin, OutputPin};
 extern crate mcp3008;
 use mcp3008::Mcp3008;
+
 
 
 const BAUD_RATE: u64 = 115200;
@@ -30,8 +31,8 @@ const PIN_MUX_INHIBIT_1: u16 = 23;
 
 
 pub struct FSR_INTEGRATION {
-    adcInputGpio: SysFsGpioInput,
-    outputPinMap: HashMap<u16, Box<SysFsGpioOutput>>,
+    adcInputGpio: InputPin,
+    outputPinMap: HashMap<u16, Box<OutputPin>>,
     currentEnabledMux: u16,
     mcp3008: Mcp3008
 }
@@ -39,8 +40,10 @@ pub struct FSR_INTEGRATION {
 
 impl FSR_INTEGRATION {
     pub fn new() -> Result<Self, StdError> {
+        let gpio = Gpio::new()?;
+
         Ok(FSR_INTEGRATION{
-            adcInputGpio: SysFsGpioInput::open(PIN_ADC_INPUT)?,
+            adcInputGpio: gpio.get(PIN_ADC_INPUT)?.into_input(),
             outputPinMap: FSR_INTEGRATION::setupPins()?,
             currentEnabledMux: MUX_COUNT - 1,
             mcp3008: Mcp3008::new("/dev/spidev0.0").unwrap()
@@ -50,25 +53,26 @@ impl FSR_INTEGRATION {
     
     pub fn setupPins() -> Result<HashMap<u16, Box<SysFsGpioOutput>>, StdError> {
         let mut outputPinMap = HashMap::new();
+        let gpio = Gpio::new()?;
 
         outputPinMap.insert(
             PIN_SHIFT_REGISTER_DATA,
-            Box::new(SysFsGpioOutput::open(PIN_SHIFT_REGISTER_DATA)?)
+            Box::new(gpio.get(PIN_SHIFT_REGISTER_DATA)?.into_output())
         );
 
         outputPinMap.insert(
             PIN_SHIFT_REGISTER_CLOCK,
-            Box::new(SysFsGpioOutput::open(PIN_SHIFT_REGISTER_CLOCK)?)
+            Box::new(gpio.get(PIN_SHIFT_REGISTER_CLOCK)?.into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_CHANNEL_0,
-            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_0)?)
+            Box::new(gpio.get(PIN_MUX_CHANNEL_0)?.into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_CHANNEL_1,
-            Box::new(SysFsGpioOutput::open(PIN_MUX_CHANNEL_1)?)
+            Box::new(gpio.get(PIN_MUX_CHANNEL_1)?.into_output())
         );
 
         outputPinMap.insert(
@@ -78,12 +82,12 @@ impl FSR_INTEGRATION {
 
         outputPinMap.insert(
             PIN_MUX_INHIBIT_0,
-            Box::new(SysFsGpioOutput::open(PIN_MUX_INHIBIT_0)?)
+            Box::new(gpio.get(PIN_MUX_INHIBIT_0)?.into_output())
         );
 
         outputPinMap.insert(
             PIN_MUX_INHIBIT_1,
-            Box::new(SysFsGpioOutput::open(PIN_MUX_INHIBIT_1)?)
+            Box::new(gpio.get(PIN_MUX_INHIBIT_1)?.into_output())
         );
 
         return Ok(outputPinMap);
