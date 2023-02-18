@@ -8,7 +8,6 @@ extern crate mcp3008;
 use mcp3008::Mcp3008;
 
 
-
 const BAUD_RATE: u64 = 115200;
 const ROW_COUNT: u8 = 10;
 const COLUMN_COUNT: u8 = 16;
@@ -20,13 +19,15 @@ const CHANNEL_PINS_PER_MUX: u8 = 3;
 //TODO 
 //Assign Pins
 const PIN_ADC_INPUT: u8 = 1;
-const PIN_SHIFT_REGISTER_CLOCK: u8 = 5;
-const PIN_SHIFT_REGISTER_DATA: u8 = 6;
+const PIN_SHIFT_REGISTER_CLOCK: u8 = 25;
+const PIN_SHIFT_REGISTER_DATA: u8 = 5;
 const PIN_MUX_CHANNEL_0: u8 = 22;
 const PIN_MUX_CHANNEL_1: u8 = 27;
 const PIN_MUX_CHANNEL_2: u8 = 17;
 const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
+
+const mux_mapping = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
 
 
 
@@ -193,10 +194,11 @@ impl FSR_INTEGRATION {
             for j in 0..COLUMN_COUNT {
                 let reading = self.readADCValue().unwrap();
                 self.shiftColumn(false).unwrap();
+		//print!("[{0: <2},{1: <2}],", i, j);
                 if j == COLUMN_COUNT-1 {
-                    print!("{}", reading);
+                    print!("{0: <4}", reading);
                 } else {
-                    print!("{}, ", reading);
+                    print!("{0: <4},", reading);
                 }
             }
             if i == ROW_COUNT-1 {
@@ -204,12 +206,13 @@ impl FSR_INTEGRATION {
             } else {
                 print!("],");
                 println!();
+                //print!(" ");
             }
             
             
         }
         print!("]");
-        println!("\n\n");
+        println!();
         Ok(())
     }
 
