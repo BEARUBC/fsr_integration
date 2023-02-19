@@ -21,13 +21,13 @@ const CHANNEL_PINS_PER_MUX: u8 = 3;
 const PIN_ADC_INPUT: u8 = 1;
 const PIN_SHIFT_REGISTER_CLOCK: u8 = 25;
 const PIN_SHIFT_REGISTER_DATA: u8 = 5;
-const PIN_MUX_CHANNEL_0: u8 = 22;
+const PIN_MUX_CHANNEL_0: u8 = 17;
 const PIN_MUX_CHANNEL_1: u8 = 27;
-const PIN_MUX_CHANNEL_2: u8 = 17;
+const PIN_MUX_CHANNEL_2: u8 = 22;
 const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
 
-const mux_mapping = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
+const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
 
 
 
@@ -46,7 +46,7 @@ impl FSR_INTEGRATION {
         Ok(FSR_INTEGRATION{
             adcInputGpio: gpio.get(PIN_ADC_INPUT).unwrap().into_input(),
             outputPinMap: FSR_INTEGRATION::setupPins().unwrap(),
-            currentEnabledMux: MUX_COUNT - 1,
+            currentEnabledMux: 1,
             mcp3008: Mcp3008::new("/dev/spidev0.0").unwrap()
         })
     }
@@ -115,6 +115,7 @@ impl FSR_INTEGRATION {
         let pin = self.outputPinMap.get_mut(&pinNo);
         //println!("{}", pinNo);
         let p = &mut (*pin.unwrap());
+        println!("PIN {} to {}", pinNo, value);
         if value == 0 {
             p.set_low();
         } else if value == 1 {
@@ -140,16 +141,33 @@ impl FSR_INTEGRATION {
             self.digitalWrite(PIN_MUX_INHIBIT_0 + self.currentEnabledMux, 0).unwrap();
         }
 
+        let mux_channel_no: u8;
 
+        mux_channel_no = mux_mapping[rowNumber as usize];
+
+        print!("SET ROW: {} ->", rowNumber);
         for i in 0..CHANNEL_PINS_PER_MUX {
             let bit = FSR_INTEGRATION::bitRead(rowNumber, i).unwrap();
-
+            print!("{}", bit);
             if bit == 1 {
-                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 1).unwrap();
+                match (i) {
+                    0 => self.digitalWrite(PIN_MUX_CHANNEL_0, 1).unwrap(),
+                    1 => self.digitalWrite(PIN_MUX_CHANNEL_1, 1).unwrap(),
+                    2 => self.digitalWrite(PIN_MUX_CHANNEL_2, 1).unwrap(),
+                    _ => ()
+                };
+                //self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 1).unwrap();
             } else {
-                self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 0).unwrap();
+                match (i) {
+                    0 => self.digitalWrite(PIN_MUX_CHANNEL_0, 0).unwrap(),
+                    1 => self.digitalWrite(PIN_MUX_CHANNEL_1, 0).unwrap(),
+                    2 => self.digitalWrite(PIN_MUX_CHANNEL_2, 0).unwrap(),
+                    _ => ()
+                };
+                //self.digitalWrite(PIN_MUX_CHANNEL_0 + i, 0).unwrap();
             }
         }
+        println!();
 
         Ok(())
     }
