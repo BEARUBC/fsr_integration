@@ -30,7 +30,7 @@ const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
 
  const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
- const col_mapping: [u8; 16] = [7, 0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14];
+ const col_mapping: [u8; 16] = [7, 0, 1, 2, 3, 4, 5, 6, 15, 8, 9, 10, 11, 12, 13, 14];
 //const mux_mapping: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1];
 
 
@@ -213,7 +213,7 @@ impl FSR_INTEGRATION {
 
         for i in 0..ROW_COUNT {
             
-            let mut cells_array: [u8; 16] = Default::default();
+            let mut cells_array: [u8; 16] = [0; 16];
 
             print!("[");
             
@@ -229,7 +229,7 @@ impl FSR_INTEGRATION {
                 self.shiftColumn(false).unwrap();
 
 
-                cells_array[col_mapping[j]] = reading;
+                cells_array[col_mapping[j] as usize] = reading;
 
 		// //print!("[{0: <2},{1: <2}],", i, j);
         //         if j == COLUMN_COUNT-1 {
