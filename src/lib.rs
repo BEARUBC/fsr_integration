@@ -1,5 +1,6 @@
 use std::io::Error as StdError;
 use std::io::{ErrorKind};
+use std::string::String;
 use std::collections::{HashMap};
 use std::pin;
 use std::vec::Vec;
@@ -29,6 +30,7 @@ const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
 
  const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
+ const col_mapping: [u8; 16] = [7, 0, 1, 2, 3, 4, 5, 6, 7, 15, 8, 9, 10, 11, 12, 13, 14];
 //const mux_mapping: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1];
 
 
@@ -206,26 +208,42 @@ impl FSR_INTEGRATION {
 
 
     pub fn run(&mut self) -> Result<(), StdError> {
-        print!("[");
+
+        
+
         for i in 0..ROW_COUNT {
+            
+            let mut cells_array: [u8; 16] = Default::default();
+
             print!("[");
+            
             self.setRow(i).unwrap();
             self.shiftColumn(true).unwrap();
-            self.shiftColumn(false).unwrap();
+            //self.shiftColumn(false).unwrap();
+            
 
             for j in 0..COLUMN_COUNT {
+                
+
                 let reading = self.readADCValue().unwrap();
                 self.shiftColumn(false).unwrap();
-		//print!("[{0: <2},{1: <2}],", i, j);
-                if j == COLUMN_COUNT-1 {
-                    // print!("{0: <4}", reading);
-                    print!("{}", reading);
-                } else {
-                    // print!("{0: <4},", reading);
-                    print!("{},",reading);
 
-                }
+
+                cells_array[col_mapping[j]] = reading;
+
+		// //print!("[{0: <2},{1: <2}],", i, j);
+        //         if j == COLUMN_COUNT-1 {
+        //             // print!("{0: <4}", reading);
+        //             print!("{}", reading);
+        //         } else {
+        //             // print!("{0: <4},", reading);
+        //             print!("{},",reading);
+
+        //         }
             }
+
+            print!("{:?}", cells_array);
+
             if i == ROW_COUNT-1 {
                 print!("]");
             } else {
