@@ -28,9 +28,7 @@ const PIN_MUX_CHANNEL_2: u8 = 22;
 const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
 
- const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
-//const mux_mapping: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1];
-
+const mux_mapping: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1];
 
 
 
@@ -39,7 +37,6 @@ pub struct FSR_INTEGRATION {
     outputPinMap: HashMap<u8, Box<OutputPin>>,
     currentEnabledMux: u8,
     mcp3008: Mcp3008
-    // printGranularity: u8
 }
 
 
@@ -148,10 +145,10 @@ impl FSR_INTEGRATION {
         let mux_channel_no: u8;
 
         mux_channel_no = mux_mapping[rowNumber as usize];
-	print!("{}-> ", mux_channel_no);
+
         // print!("SET ROW: {} ->", rowNumber);
         for i in 0..CHANNEL_PINS_PER_MUX {
-            let bit = FSR_INTEGRATION::bitRead(mux_channel_no, i).unwrap();
+            let bit = FSR_INTEGRATION::bitRead(rowNumber, i).unwrap();
             // print!("{}", bit);
             if bit == 1 {
                 match (i) {
@@ -218,7 +215,16 @@ impl FSR_INTEGRATION {
                 self.shiftColumn(false).unwrap();
 		//print!("[{0: <2},{1: <2}],", i, j);
                 if j == COLUMN_COUNT-1 {
-                    // print!("{0: <4}", reading);
+,1],
+[0,0,0,0,0,2,0,2,0,1,1,0,0,0,0,0],
+[0,0,0,0,2,0,1,0,1,0,2,0,1,1,0,0],
+[2,0,0,0,0,3,0,0,0,0,2,1,1,0,0,0],
+[0,0,0,0,0,1,0,0,0,1,0,0,1,2,0,1],
+[0,0,0,0,0,0,0,0,0,1,0,0,2,0,0,0],
+[0,0,1,0,0,0,0,2,1,0,0,2,2,1,1,2],
+[2,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1],
+[0,1,0,0,0,0,1,0,1,0,2,0,0,0,0,2],
+[0,0,0,0,0,1,1,0,0,0,2,1,0,0,0,                    // print!("{0: <4}", reading);
                     print!("{}", reading);
                 } else {
                     // print!("{0: <4},", reading);
@@ -245,17 +251,6 @@ impl FSR_INTEGRATION {
 
         Ok(())
     }
-
-    // fn printGranularity(&mut self, reading: u8) {
-    //     if reading < 255 / 3 {
-    //         print!{""}
-    //     } 
-    //     else if reading < (255 * 2) / 3 {
-    //         print!{"|"}
-    //     } else {
-    //         print!{"B"}
-    //     }
-    // }
 
     
 }
