@@ -16,7 +16,7 @@ fn main() {
 
     loop{
         fsr.shiftColumn(true).unwrap();
-            fsr.shiftColumn(false).unwrap();
+//            fsr.shiftColumn(false).unwrap();
             let mut i = 0;
          while true {
             fsr.shiftColumn(false).unwrap();
@@ -29,6 +29,8 @@ fn main() {
             i += 1;
             if i > 15 {
                 i = 0;
+		fsr.shiftColumn(true).unwrap();
+ //           	fsr.shiftColumn(false).unwrap();
             }
          }
     //     fsr.setRow(5);
