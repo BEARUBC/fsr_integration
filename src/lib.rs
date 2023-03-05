@@ -29,8 +29,9 @@ const PIN_MUX_CHANNEL_2: u8 = 22;
 const PIN_MUX_INHIBIT_0: u8 = 23;
 const PIN_MUX_INHIBIT_1: u8 = 24;
 
- const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
- const col_mapping: [u8; 16] = [7, 0, 1, 2, 3, 4, 5, 6, 15, 8, 9, 10, 11, 12, 13, 14];
+const mux_mapping: [u8; 10] = [3, 0, 1, 5, 7, 2, 6, 4, 3, 0];
+const col_mapping: [u8; 16] = [14, 7, 0, 1, 2, 3, 4, 5, 6, 15, 8, 9, 10, 11, 12, 13];
+//const col_mapping: [u8; 16] = [0, 1, 2, 3, 4, 5, 6,7, 8, 9, 10, 11, 12, 13, 14, 15];
 //const mux_mapping: [u8; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1];
 
 
@@ -150,7 +151,7 @@ impl FSR_INTEGRATION {
         let mux_channel_no: u8;
 
         mux_channel_no = mux_mapping[rowNumber as usize];
-	print!("{}-> ", mux_channel_no);
+//	print!("{}-> ", mux_channel_no);
         // print!("SET ROW: {} ->", rowNumber);
         for i in 0..CHANNEL_PINS_PER_MUX {
             let bit = FSR_INTEGRATION::bitRead(mux_channel_no, i).unwrap();
@@ -209,13 +210,13 @@ impl FSR_INTEGRATION {
 
     pub fn run(&mut self) -> Result<(), StdError> {
 
-        
+        print!("[");
 
         for i in 0..ROW_COUNT {
             
             let mut cells_array: [u8; 16] = [0; 16];
 
-            print!("[");
+            //print!("[");
             
             self.setRow(i).unwrap();
             self.shiftColumn(true).unwrap();
@@ -228,9 +229,9 @@ impl FSR_INTEGRATION {
                 let reading = self.readADCValue().unwrap();
                 self.shiftColumn(false).unwrap();
 
-
-                cells_array[col_mapping[j] as usize] = reading;
-
+//		println!("Reading j={} storing in {}", j, col_mapping[j as usize]);
+                cells_array[col_mapping[j as usize] as usize] = reading;
+	//	cells_array[0] = reading;
 		// //print!("[{0: <2},{1: <2}],", i, j);
         //         if j == COLUMN_COUNT-1 {
         //             // print!("{0: <4}", reading);
@@ -245,10 +246,10 @@ impl FSR_INTEGRATION {
             print!("{:?}", cells_array);
 
             if i == ROW_COUNT-1 {
-                print!("]");
+               // print!("]");
             } else {
-                print!("],");
-                println!();
+                print!(",");
+               // println!();
                 //print!(" ");
             }
             
@@ -256,7 +257,7 @@ impl FSR_INTEGRATION {
         }
         print!("]");
         let ten_millis = time::Duration::from_millis(100);
-        print!("\n");
+        //print!("\n");
 
         print!("\n");
         thread::sleep(ten_millis);
